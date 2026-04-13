@@ -165,6 +165,9 @@ fun ChatContent(
     val originalMessageTexts = remember { mutableStateMapOf<Long, String>() }
     val latestMessagesState = rememberUpdatedState(state.messages)
     val selectedMessageIdState = rememberUpdatedState(selectedMessageId)
+    val originalMessageTexts = remember { mutableStateMapOf<Long, String>() }
+val transformedMessageTexts = remember { mutableStateMapOf<Long, String>() }
+val translatingMessages = remember { mutableStateMapOf<Long, Boolean>() }
     val displayMessages by remember {
         derivedStateOf {
             val baseMessages = latestMessagesState.value
@@ -1145,6 +1148,11 @@ fun ChatContent(
                                 { pos: Offset, size: IntSize ->
                                     menuOffset = pos
                                     menuMessageSize = size
+                                    TextButton(
+    onClick = { onTranslate(selectedMessage) }
+) {
+    Text("Translate")
+                                    }
                                 }
                             }
 
@@ -1395,6 +1403,25 @@ fun ChatContent(
                     },
                     onDismiss = { selectedMessageId = null }
                 )
+                onTranslate = { message ->
+    val text = message.extractTextContent() ?: return@ChatMessageOptionsMenu
+
+    coroutineScope.launch {
+        if (translatingMessages[message.id] == true) return@launch
+        translatingMessages[message.id] = true
+
+        try {
+            val translated = component.translationEngine.translate(text)
+
+            if (!originalMessageTexts.containsKey(message.id)) {
+                originalMessageTexts[message.id] = text
+            }
+
+            transformedMessageTexts[message.id] = translated
+
+        } finally {
+            translatingMessages[message.id] = false
+        }               }
             }
 
             pendingBlockUserId?.let { userId ->
